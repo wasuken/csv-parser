@@ -6,9 +6,12 @@
 ;;あえて分離している。それとできれば例外措置はここでやって
 ;;分割はsplitに任せたい
 (defun parse-line (line)
-  ;;別の言語のライブラリだとseparatorは指定できるようになってたので
-  ;;ここも変わるかも
-  (split "," line))
+  ;;ダブルコーテーション付きCSVなら
+  (cond ((search "\"" line)
+         (remove-if #'(lambda (x) (or (string= "" x)
+                                      (string= "," x)))
+                    (split "\"" line)))
+        (t (split "," line))))
 
 (defun split (sepa str)
   (let ((pos (search sepa str))
@@ -23,14 +26,15 @@
                 #'(lambda (x)
                     (= (length x) 0))
                 (split '(#\Newline) str))))
-    (list (cons :head (list (parse-line (car lines))))
-          (cons :body (list (mapcar #'parse-line (cdr lines)))))))
+    (list :head (parse-line (car lines))
+          :body (mapcar #'parse-line (cdr lines)))))
 
 (defun open-csvfile-parse (filepath)
   (parse-csv-string (all-file-read filepath)))
 
 (defun all-file-read (filepath)
-  (with-open-file (s filepath :direction :input)
-  (let ((buf (make-string (file-length s))))
-    (read-sequence buf s)
-    buf)))
+  (with-open-file (s filepath :direction :input )
+    (let ((buf (make-string (file-length s))))
+      (read-sequence buf s)
+      buf)))
+
